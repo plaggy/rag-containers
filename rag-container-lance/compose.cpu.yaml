@@ -1,0 +1,36 @@
+services:
+  embed:
+    container_name: embed_service
+    image: ghcr.io/huggingface/text-embeddings-inference:cpu-0.6
+    ports:
+      - "8080:80"
+    volumes:
+      - ./data:/data
+    command: ["--model-id", "BAAI/bge-large-en-v1.5", "--revision", "refs/pr/5", "--port", "8080"]
+  rerank:
+    container_name: rerank_service
+    image: ghcr.io/huggingface/text-embeddings-inference:cpu-0.6
+    ports:
+      - "8081:80"
+    volumes:
+      - ./data:/data
+    command: ["--model-id", "BAAI/bge-reranker-large", "--revision", "refs/pr/4", "--port", "8081"]
+  app:
+    build:
+      context: .
+      args:
+        - DOCS_DIR=./docs_dir
+    env_file:
+      - .env
+    secrets:
+      - OPENAI_API_KEY
+      - HF_TOKEN
+    depends_on:
+      - embed
+      - rerank
+
+secrets:
+  OPENAI_API_KEY:
+    file: ./OPENAI_API_KEY
+  HF_TOKEN:
+    file: ./HF_TOKEN

@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Information Page</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Sans+Pro:wght@400;600&amp;display=swap">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&amp;display=swap">
+    <style>
+        * {
+            font-family: "Source Sans Pro";
+        }
+
+        .instructions > * {
+          color: #111 !important;
+        }
+
+        details.doc-box * {
+          color: #111 !important;
+        }
+
+        .dark {
+            background: #111;
+            color: white;
+        }
+
+        .doc-box {
+            padding: 10px;
+            margin-top: 10px;
+            background-color: #baecc2;
+            border-radius: 6px;
+            color: #111 !important;
+            max-width: 700px;
+            box-shadow: rgba(0, 0, 0, 0.2) 0px 1px 2px 0px;
+        }
+
+        .doc-full {
+            margin: 10px 14px;
+            line-height: 1.6rem;
+        }
+
+        .instructions {
+            color: #111 !important;
+            background: #b7bdfd;
+            display: block;
+            border-radius: 6px;
+            padding: 6px 10px;
+            line-height: 1.6rem;
+            max-width: 700px;
+            box-shadow: rgba(0, 0, 0, 0.2) 0px 1px 2px 0px;
+        }
+
+        .query {
+            color: #111 !important;
+            background: #ffbcbc;
+            display: block;
+            border-radius: 6px;
+            padding: 6px 10px;
+            line-height: 1.6rem;
+            max-width: 700px;
+            box-shadow: rgba(0, 0, 0, 0.2) 0px 1px 2px 0px;
+        }
+    </style>
+</head>
+<body>
+<div class="prose svelte-1ybaih5" id="component-6">
+<h2>Prompt</h2>
+Below is the prompt that is given to the model. <hr>
+<h2>Instructions</h2>
+    <span class="instructions">Use the following pieces of context to answer the question at the end.<br>If you don't know the answer, just say that you don't know, <span style="font-weight: bold;">don't try to make up an answer.</span></span><br>
+<h2>Context</h2>
+{% for doc in documents %}
+    <details class="doc-box">
+        <summary>
+            <b>Doc {{ loop.index }}:</b> <span class="doc-short">{{ doc[:100] }}...</span>
+        </summary>
+        <div class="doc-full">{{ doc }}</div>
+    </details>
+{% endfor %}
+
+    <h2>Query</h2>
+    <span class="query">{{ query }}</span>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    const detailsElements = document.querySelectorAll('.doc-box');
+
+    detailsElements.forEach(detail => {
+        detail.addEventListener('toggle', function() {
+            const docShort = this.querySelector('.doc-short');
+            if (this.open) {
+                docShort.style.display = 'none';
+            } else {
+                docShort.style.display = 'inline';
+            }
+        });
+    });
+});
+</script>
+</body>
+</html>

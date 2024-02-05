@@ -1,0 +1,60 @@
+services:
+  qdrant:
+    container_name: qdrant_service
+    image: qdrant/qdrant
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    volumes:
+      - ./qdrant_storage:/qdrant/storage
+  embed:
+    container_name: embed_service
+    image: ghcr.io/huggingface/text-embeddings-inference:turing-0.6
+    ports:
+      - "8080:80"
+    volumes:
+      - ./data:/data
+    command: ["--model-id", "BAAI/bge-large-en-v1.5", "--revision", "refs/pr/5", "--port", "8080"]
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+  rerank:
+    container_name: rerank_service
+    image: ghcr.io/huggingface/text-embeddings-inference:turing-0.6
+    ports:
+      - "8081:80"
+    volumes:
+      - ./data:/data
+    command: ["--model-id", "BAAI/bge-reranker-large", "--revision", "refs/pr/4", "--port", "8081"]
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+  app:
+    build:
+      context: .
+      args:
+        - DOCS_DIR=./docs_dir
+    env_file:
+      - .env
+    secrets:
+      - OPENAI_API_KEY
+      - HF_TOKEN
+    depends_on:
+      - qdrant
+      - embed
+      - rerank
+
+
+secrets:
+  OPENAI_API_KEY:
+    file: ./OPENAI_API_KEY
+  HF_TOKEN:
+    file: ./HF_TOKEN
