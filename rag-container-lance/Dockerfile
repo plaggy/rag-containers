@@ -36,12 +36,12 @@ RUN pyenv install 3.10
 RUN pyenv global 3.10
 
 RUN pip install --upgrade pip
-COPY rag-gradio/requirements.txt requirements.txt
+COPY rag-gradio-async/requirements.txt requirements.txt
 RUN pip install -r requirements.txt
 
 WORKDIR /usr/src
 
-COPY rag-gradio app
+COPY rag-gradio-async app
 COPY ${DOCS_DIR} docs_dir
 
 COPY embed_and_index.py .

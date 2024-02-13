@@ -26,10 +26,18 @@ EF_CONSTRUCT=int(os.getenv("EF_CONSTRUCT"))
 q_client = AsyncQdrantClient(url=os.getenv("QDRANT_URL"), prefer_grpc=True)
 
 HEADERS = {
-	"Content-Type": "application/json"
+    "Content-Type": "application/json"
 }
 
-async def request(sentence, id, semaphore):
+
+async def request(sentence: str, id: int | str, semaphore: asyncio.BoundedSemaphore):
+    """
+    Vectorize and ingest a single sentence
+    Args:
+        sentence: a sentence to add to a DB
+        id: a unique ID of a record
+        semaphore: a semaphore to bound the number of coroutines
+    """
     async with semaphore:
         payload = {
             "inputs": sentence,
@@ -94,9 +102,11 @@ if __name__ == "__main__":
                 text = file.open().read()
                 if text:
                     texts.append(text)
-            except:
-                pass
-    texts = texts[:150]
+            except OSError as e:
+                logger.error("Error reading file: ", e)
+            except Exception as e:
+                logger.error("Unhandled exception: ", e)
+                raise
 
     logger.info(f"Successfully read {len(texts)} files")
 

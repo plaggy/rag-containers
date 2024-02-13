@@ -22,9 +22,13 @@ reranker = AsyncInferenceClient(model=os.getenv("RERANK_URL") + "/rerank")
 
 q_client = AsyncQdrantClient(url=os.getenv("QDRANT_URL"), prefer_grpc=True)
 
-async def retrieve(query, k):
+
+async def retrieve(query: str, k: int) -> list[str]:
+    """
+    Retrieve top k items with RETRIEVER
+    """
     resp = await retriever.post(
-        json = {
+        json={
             "inputs": query,
             "truncate": True
         }
@@ -32,8 +36,7 @@ async def retrieve(query, k):
     try:
         query_vec = json.loads(resp)[0]
     except:
-        gr.Warning(resp.decode())
-        raise ValueError(resp.decode())
+        raise gr.Error(resp.decode())
     
     documents = await q_client.search(
         collection_name=TABLE_NAME,
@@ -46,11 +49,14 @@ async def retrieve(query, k):
     return documents
 
 
-async def rerank(query, documents, k):
+async def rerank(query: str, documents: list[str], k: int) -> list[str]:
+    """
+    Rerank items returned by RETRIEVER and return top k
+    """
     scores = []
     for i in range(int(np.ceil(len(documents) / BATCH_SIZE))):
         resp = await reranker.post(
-            json = {
+            json={
                 "query": query,
                 "texts": documents[i * BATCH_SIZE:(i + 1) * BATCH_SIZE],
                 "truncate": True
@@ -61,8 +67,7 @@ async def rerank(query, documents, k):
             batch_scores = [s["score"] for s in batch_scores]
             scores.extend(batch_scores)
         except:
-            gr.Warning(resp.decode())
-            raise ValueError(resp.decode())
+            raise gr.Error(resp.decode())
     documents = [doc for _, doc in sorted(zip(scores, documents))[-k:]]
 
     return documents

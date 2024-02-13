@@ -5,64 +5,54 @@ import gradio as gr
 from pathlib import Path
 from time import perf_counter
 from jinja2 import Environment, FileSystemLoader
+from typing import AsyncGenerator
 
-from backend.query_llm import generate_hf, generate_openai
+from backend.query_utils import GenFunc
 from backend.semantic_search import rerank, retrieve
 
 
-proj_dir = Path(__file__).parent
-# Setting up the logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Set up the template environment with the templates directory
+TOP_K_RANK = int(os.getenv("TOP_K_RANK"))
+TOP_K_RETRIEVE = int(os.getenv("TOP_K_RETRIEVE"))
+
+proj_dir = Path(__file__).parent
 env = Environment(loader=FileSystemLoader(proj_dir / 'templates'))
 
-# Load the templates directly from the environment
 template = env.get_template('template.j2')
 template_html = env.get_template('template_html.j2')
 
 
-def add_text(history, text):
+def add_text(history: list[list], text: str) -> tuple[list[list], gr.Textbox]:
     history = [] if history is None else history
-    history = history + [(text, None)]
+    history = history + [[text, None]]
     return history, gr.Textbox(value="", interactive=False)
 
 
-def bot(history, use_ranker, api_kind):
-    top_k_rank = int(os.getenv("TOP_K_RANK"))
-    top_k_retrieve = int(os.getenv("TOP_K_RETRIEVE"))
-    query = history[-1][0] or ''
+async def bot(history: list[list], use_ranker: bool, api_kind: str) -> AsyncGenerator[tuple]:
+    query = history[-1][0] or ""
 
     if not query:
-        raise gr.Error("The request is empty, please type something in")
+        raise gr.Warning("The request is empty, please type something in")
+
+    generate_fn = getattr(GenFunc, api_kind).value
 
     logger.info('Retrieving documents...')
     tic = perf_counter()
     if use_ranker:
-        retrieved_docs = retrieve(query, top_k_retrieve)
-        documents = rerank(query, retrieved_docs, top_k_rank)
+        retrieved_docs = await retrieve(query, TOP_K_RETRIEVE)
+        documents = await rerank(query, retrieved_docs, TOP_K_RANK)
     else:
-        documents = retrieve(query, top_k_rank)
-
+        documents = await retrieve(query, TOP_K_RANK)
     document_time = perf_counter() - tic
     logger.info(f'Finished Retrieving documents in {round(document_time, 2)} seconds...')
 
-    # Create Prompt
     prompt = template.render(documents=documents, query=query)
     prompt_html = template_html.render(documents=documents, query=query)
 
-    if api_kind == "HuggingFace":
-         generate_fn = generate_hf
-    elif api_kind == "OpenAI":
-         generate_fn = generate_openai
-    elif api_kind is None:
-         raise ValueError("API name was not provided")
-    else:
-         raise ValueError(f"API {api_kind} is not supported")
-
     history[-1][1] = ""
-    for character in generate_fn(prompt, history[:-1]):
+    async for character in generate_fn(prompt, history[:-1]):
         history[-1][1] = character
         yield history, prompt_html
 
@@ -87,7 +77,7 @@ with gr.Blocks() as demo:
         )
         txt_btn = gr.Button(value="Submit text", scale=1)
 
-    cb = gr.Checkbox(label="Use cross-encoder", info="Rerank after retrieval?")
+    cb = gr.Checkbox(label="Use reranker", info="Rerank after retrieval?")
     api_kind = gr.Radio(choices=["HuggingFace", "OpenAI"], value="HuggingFace")
 
     prompt_html = gr.HTML()

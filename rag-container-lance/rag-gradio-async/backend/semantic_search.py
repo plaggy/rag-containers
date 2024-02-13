@@ -4,7 +4,7 @@ import gradio as gr
 import numpy as np
 import lancedb
 import os
-from huggingface_hub import InferenceClient
+from huggingface_hub import AsyncInferenceClient
 
 
 # Setting up the logging
@@ -18,15 +18,19 @@ BATCH_SIZE = int(os.getenv("BATCH_SIZE"))
 NPROBES = int(os.getenv("NPROBES"))
 REFINE_FACTOR = int(os.getenv("REFINE_FACTOR"))
 
-retriever = InferenceClient(model=os.getenv("EMBED_URL") + "/embed")
-reranker = InferenceClient(model=os.getenv("RERANK_URL") + "/rerank")
+retriever = AsyncInferenceClient(model=os.getenv("EMBED_URL") + "/embed")
+reranker = AsyncInferenceClient(model=os.getenv("RERANK_URL") + "/rerank")
 
 db = lancedb.connect("/usr/src/.lancedb")
 tbl = db.open_table(TABLE_NAME)
 
-def retrieve(query, k):
-    resp = retriever.post(
-        json = {
+
+async def retrieve(query: str, k: int) -> list[str]:
+    """
+    Retrieve top k items with RETRIEVER
+    """
+    resp = await retriever.post(
+        json={
             "inputs": query,
             "truncate": True
         }
@@ -34,8 +38,7 @@ def retrieve(query, k):
     try:
         query_vec = json.loads(resp)[0]
     except:
-        gr.Warning(resp.decode())
-        raise ValueError(resp.decode())
+        raise gr.Error(resp.decode())
     
     documents = tbl.search(
         query=query_vec
@@ -45,11 +48,14 @@ def retrieve(query, k):
     return documents
 
 
-def rerank(query, documents, k):
+async def rerank(query: str, documents: list[str], k: int) -> list[str]:
+    """
+    Rerank items returned by RETRIEVER and return top k
+    """
     scores = []
     for i in range(int(np.ceil(len(documents) / BATCH_SIZE))):
-        resp = reranker.post(
-            json = {
+        resp = await reranker.post(
+            json={
                 "query": query,
                 "texts": documents[i * BATCH_SIZE:(i + 1) * BATCH_SIZE],
                 "truncate": True
@@ -60,8 +66,7 @@ def rerank(query, documents, k):
             batch_scores = [s["score"] for s in batch_scores]
             scores.extend(batch_scores)
         except:
-            gr.Warning(resp.decode())
-            raise ValueError(resp.decode())
+            raise gr.Error(resp.decode())
     documents = [doc for _, doc in sorted(zip(scores, documents))[-k:]]
 
     return documents
