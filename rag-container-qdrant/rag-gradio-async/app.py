@@ -30,7 +30,7 @@ def add_text(history: list[list], text: str) -> tuple[list[list], gr.Textbox]:
     return history, gr.Textbox(value="", interactive=False)
 
 
-async def bot(history: list[list], use_ranker: bool, api_kind: str) -> AsyncGenerator[tuple]:
+async def bot(history: list[list], use_ranker: bool, api_kind: str) -> AsyncGenerator[tuple, None]:
     query = history[-1][0] or ''
 
     if not query:
