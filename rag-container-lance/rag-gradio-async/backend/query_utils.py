@@ -57,7 +57,7 @@ def format_prompt_hf(message: str) -> str:
     return TOKENIZER.apply_chat_template(messages, tokenize=False)
 
 
-async def generate_hf(prompt: str, history: str) -> AsyncGenerator[str]:
+async def generate_hf(prompt: str, history: str) -> AsyncGenerator[str, None]:
     """
     Generate a sequence of tokens based on a given prompt and history using HF API.
     """
@@ -82,7 +82,7 @@ async def generate_hf(prompt: str, history: str) -> AsyncGenerator[str]:
         raise gr.Error(str(e))
 
 
-async def generate_openai(prompt: str, history: str) -> AsyncGenerator[str]:
+async def generate_openai(prompt: str, history: str) -> AsyncGenerator[str, None]:
     """
     Generate a sequence of tokens based on a given prompt and history using OpenAI API.
     """
