@@ -30,8 +30,10 @@ OPENAI_MODEL - name of an OpenAI LLM
 EMBED_MODEL - name of an embedding model from the HF Hub, must match the model used for an embedder
 
 # Indexing and search parameters - parameters of vector DBs, refer to their documentation. [LanceDB](https://blog.lancedb.com/benchmarking-lancedb-92b01032874a), [Qdrant](https://qdrant.tech/documentation/tutorials/retrieval-quality/#tweaking-the-hnsw-parameters)
-# Generation parameters - standard [generation params](https://huggingface.co/docs/transformers/en/main_classes/text_generation#transformers.GenerationConfig). REP_PENALTY is a repetition penalty, HF models-specific;
-FREQ_PENALTY - frequency penalty, OpenAI models-specific
+# Generation parameters - mostly standard [generation params](https://huggingface.co/docs/transformers/en/main_classes/text_generation#transformers.GenerationConfig).
+PROMPT_TOKEN_LIMIT might come in handy if you expect the context length to go beyond the limit. It'll truncate only context and keep the postfix with appropriate special tokens
+REP_PENALTY is a repetition penalty, HF models-specific;
+FREQ_PENALTY - frequency penalty, OpenAI models-specific;
 ```
 
 The secrets `HF_TOKEN` and `OPENAI_API_KEY` must be stored separately in the files with the corresponding names.
