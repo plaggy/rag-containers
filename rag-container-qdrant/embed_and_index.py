@@ -102,12 +102,12 @@ if __name__ == "__main__":
                 text = file.open().read()
                 if text:
                     texts.append(text)
-            except OSError as e:
+            except (OSError, UnicodeDecodeError) as e:
                 logger.error("Error reading file: ", e)
             except Exception as e:
                 logger.error("Unhandled exception: ", e)
                 raise
-
+            
     logger.info(f"Successfully read {len(texts)} files")
 
     asyncio.run(main(texts))

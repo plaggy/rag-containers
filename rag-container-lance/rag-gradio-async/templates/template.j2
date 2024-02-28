@@ -1,8 +1,6 @@
 Instructions: Use the following unique documents in the Context section to answer the Query at the end. If you don't know the answer, just say that you don't know, don't try to make up an answer.
 Context:
-{% for doc in documents %}
 ---
-    {{ doc }}
-{% endfor %}
+{{ context }}
 ---
 Query: {{ query }}

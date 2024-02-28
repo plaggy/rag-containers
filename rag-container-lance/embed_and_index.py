@@ -5,6 +5,7 @@ import pyarrow as pa
 import lancedb
 import logging
 import os
+
 from tqdm import tqdm
 from pathlib import Path
 from transformers import AutoConfig
@@ -38,7 +39,7 @@ def embed_and_index():
                 text = file.open().read()
                 if text:
                     texts.append(text)
-            except OSError as e:
+            except (OSError, UnicodeDecodeError) as e:
                 logger.error("Error reading file: ", e)
             except Exception as e:
                 logger.error("Unhandled exception: ", e)

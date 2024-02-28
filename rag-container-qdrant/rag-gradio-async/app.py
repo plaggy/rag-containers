@@ -30,13 +30,12 @@ def add_text(history: list[list], text: str) -> tuple[list[list], gr.Textbox]:
     return history, gr.Textbox(value="", interactive=False)
 
 
-async def bot(history: list[list], use_ranker: bool, api_kind: str) -> AsyncGenerator[tuple, None]:
-    query = history[-1][0] or ''
-
-    if not query:
+async def bot(history: list[list], use_ranker: bool, api_kind: str) -> AsyncGenerator[tuple[list[list], str], None]:
+    if not history or not history[-1][0]:
         raise gr.Warning("The request is empty, please type something in")
-
-    generate_fn = getattr(GenFunc, api_kind).value
+    
+    query = history[-1][0]
+    generate_fn = getattr(GenFunc, api_kind.lower())
 
     logger.info('Retrieving documents...')
     tic = perf_counter()
@@ -48,11 +47,10 @@ async def bot(history: list[list], use_ranker: bool, api_kind: str) -> AsyncGene
     document_time = perf_counter() - tic
     logger.info(f'Finished Retrieving documents in {round(document_time, 2)} seconds...')
 
-    prompt = template.render(documents=documents, query=query)
     prompt_html = template_html.render(documents=documents, query=query)
 
     history[-1][1] = ""
-    async for character in generate_fn(prompt, history[:-1]):
+    async for character in generate_fn(template, query, documents, history[:-1]):
         history[-1][1] = character
         yield history, prompt_html
 

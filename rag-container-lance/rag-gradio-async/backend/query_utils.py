@@ -2,12 +2,13 @@ import openai
 import gradio as gr
 import os
 import logging
+import tiktoken
 
 from enum import Enum
 from typing import AsyncGenerator
-
 from huggingface_hub import AsyncInferenceClient
 from transformers import AutoTokenizer
+from jinja2 import Template
 
 
 logging.basicConfig(level=logging.INFO)
@@ -15,7 +16,11 @@ logger = logging.getLogger(__name__)
 
 OPENAI_KEY = open("/run/secrets/OPENAI_API_KEY").read().strip("\n")
 HF_TOKEN = open("/run/secrets/HF_TOKEN").read().strip("\n")
-TOKENIZER = AutoTokenizer.from_pretrained(os.getenv("HF_MODEL"))
+PROMPT_TOKEN_LIMIT = int(os.getenv("PROMPT_TOKEN_LIMIT", 32768))
+
+HF_TOKENIZER = AutoTokenizer.from_pretrained(os.getenv("HF_MODEL"))
+# https://cookbook.openai.com/examples/how_to_count_tokens_with_tiktoken
+OAI_TOKENIZER = tiktoken.get_encoding("cl100k_base")
 
 HF_CLIENT = AsyncInferenceClient(
     os.getenv("HF_URL"),
@@ -41,27 +46,53 @@ OAI_GENERATE_KWARGS = {
 }
 
 
-def format_prompt_openai(message: str) -> list[dict[str, str]]:
+def truncate_context(
+        tokenizer: AutoTokenizer | tiktoken.Encoding, 
+        template: Template, 
+        query: str, 
+        docs: list[str]
+    ) -> str:
+    """
+    This is an attempt to truncate the context to the preset limit in order to keep the postfix
+    """
+    # +2 for newlines
+    preprompt_tokens = len(tokenizer.encode(template.render(query=query))) + 2
+    context = "\n".join(docs)
+    context = tokenizer.decode(
+        # -6 to account for special tokens, just an approximation
+        tokenizer.encode(context)[:PROMPT_TOKEN_LIMIT - preprompt_tokens - 6]
+    )
+    message = template.render(context=context, query=query)
+
+    return message
+
+
+def format_prompt_openai(template: Template, query: str, docs: list[str]) -> list[dict[str, str]]:
     """
     Formats the given message in a gpt-friendly format
     """
-    messages = [{"role": "user", "content": message}]
-    return messages
+    message = truncate_context(OAI_TOKENIZER, template, query, docs)
+
+    return [{"role": "user", "content": message}]
 
 
-def format_prompt_hf(message: str) -> str:
+def format_prompt_hf(template: Template, query: str, docs: list[str]) -> str:
     """
     Formats the given message using HF chat template
     """
-    messages = [{"role": "user", "content": message}]
-    return TOKENIZER.apply_chat_template(messages, tokenize=False)
+    message = truncate_context(HF_TOKENIZER, template, query, docs)
+    message = HF_TOKENIZER.bos_token + "[INST] " + message + " [/INST]"
+
+    return message
 
 
-async def generate_hf(prompt: str, history: str) -> AsyncGenerator[str, None]:
+async def generate_hf(
+        template: Template, query: str, docs: list[str], history: list[list]
+    ) -> AsyncGenerator[str, None]:
     """
     Generate a sequence of tokens based on a given prompt and history using HF API.
     """
-    formatted_prompt = format_prompt_hf(prompt)
+    formatted_prompt = format_prompt_hf(template, query, docs)
     formatted_prompt = formatted_prompt.encode("utf-8").decode("utf-8")
 
     # history is not used yet
@@ -82,11 +113,13 @@ async def generate_hf(prompt: str, history: str) -> AsyncGenerator[str, None]:
         raise gr.Error(str(e))
 
 
-async def generate_openai(prompt: str, history: str) -> AsyncGenerator[str, None]:
+async def generate_openai(
+        template: Template, query: str, docs: list[str], history: list[list]
+    ) -> AsyncGenerator[str, None]:
     """
     Generate a sequence of tokens based on a given prompt and history using OpenAI API.
     """
-    formatted_prompt = format_prompt_openai(prompt)
+    formatted_prompt = format_prompt_openai(template, query, docs)
 
     # history is not used yet
     try:
@@ -107,5 +140,5 @@ async def generate_openai(prompt: str, history: str) -> AsyncGenerator[str, None
 
 
 class GenFunc(Enum):
-    HF = generate_hf
-    OPENAI = generate_openai
+    huggingface = generate_hf
+    openai = generate_openai
