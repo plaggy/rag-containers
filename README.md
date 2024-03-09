@@ -9,6 +9,9 @@ Components:
 
 Usage:
 
+Set `DOCS_DIR` in compose files to the path of your documents directory. 
+Then
+
 ```
 docker compose -f compose.cpu.yaml up
 docker compose -f compose.gpu.yaml up
