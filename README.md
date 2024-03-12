@@ -5,7 +5,7 @@ Components:
 - [LanceDB](https://lancedb.github.io/lancedb/)/[Qdrant](https://qdrant.tech/documentation/quick-start/)
 - OpenAI/HuggingFace-hosted LLM
 
-**!! The input documents are expected to be clean and chunked as needed, they'll be embedded as-is !!**
+**!! The input documents are expected to be clean raw text and chunked as needed, they'll be embedded as-is !!**
 
 Usage:
 
