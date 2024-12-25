@@ -42,3 +42,6 @@ FREQ_PENALTY - frequency penalty, OpenAI models-specific;
 The secrets `HF_TOKEN` and `OPENAI_API_KEY` must be stored separately in the files with the corresponding names.
 
 **Note that cross-encoder reranking would be very slow on CPU**
+
+-------
+Now part of the [Nebius Academy repo](https://github.com/Nebius-Academy/LLMOps-Essentials/tree/rag_service)
